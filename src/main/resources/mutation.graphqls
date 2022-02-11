@@ -1,0 +1,29 @@
+type Mutation{
+    createPersonalDetails(data : personalDetailInput!): PersonalDetail
+    createHealthDetails(data : healthDetailInput!, phoneNumber:String!): HealthDetail
+    createDiagnosisDetails(data : diagnosisDetailInput!, phoneNumber:String!): Diagnosis
+}
+
+input personalDetailInput{
+    id: ID
+    firstName: String!
+    middleName: String
+    lastName: String!
+    address: String!
+    phoneNumber: String!
+}
+
+input healthDetailInput{
+    id: ID
+    height: String!
+    weight: String!
+    bloodPressure: String!
+    temperature: String!
+}
+
+input diagnosisDetailInput{
+    id: ID
+    referredHospital: String!
+    referredDoc: String!
+    doctorDiagnosis: [String!]!
+}
