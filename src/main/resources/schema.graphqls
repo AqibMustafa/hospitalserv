@@ -3,6 +3,8 @@ type Query{
     getPersonalDetail(id: ID!): PersonalDetail
     getHealthDetail(id: ID!): HealthDetail
     getDiagnosisDetail(id: ID!): Diagnosis
+    getUser(userName: String!): UserDetail
+    getUsers: [UserDetail]
 }
 
 type PatientDetail{
@@ -35,4 +37,22 @@ type Diagnosis{
     referredHospital: String!
     referredDoc: String!
     doctorDiagnosis: [String!]!
+}
+
+type UserDetail{
+    id: ID!
+    name: String!
+    username: String!
+    password: String!
+    userRoles: [RoleDetail!]
+}
+
+type RoleDetail{
+    id : ID
+    name: String!
+}
+
+type UserWithToken{
+    token: String!
+    user: UserDetail!
 }

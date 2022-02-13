@@ -1,7 +1,12 @@
 type Mutation{
-    createPersonalDetails(data : personalDetailInput!): PersonalDetail
+    createPersonalDetails(data : personalDetailInput!, userName:String!): PersonalDetail
     createHealthDetails(data : healthDetailInput!, phoneNumber:String!): HealthDetail
     createDiagnosisDetails(data : diagnosisDetailInput!, phoneNumber:String!): Diagnosis
+    saveUser(data : userInput!): UserDetail
+    saveRole(data : roleInput!): RoleDetail
+    addRoleToUser(username: String! , roleName: String!): Boolean
+    updateUserPassword(data: passwordUpdate): UserDetail
+    login(username: String!, password: String!): UserWithToken
 }
 
 input personalDetailInput{
@@ -26,4 +31,22 @@ input diagnosisDetailInput{
     referredHospital: String!
     referredDoc: String!
     doctorDiagnosis: [String!]!
+}
+
+input userInput{
+    id: ID
+    name: String!
+    username: String!
+    password: String!
+}
+
+input roleInput{
+    id : ID
+    name: String!
+}
+
+input passwordUpdate{
+    username: String!
+    currentPassword: String!
+    newPassword: String!
 }
