@@ -3,16 +3,19 @@ package com.aqib.hospital.configuration;
 import com.aqib.hospital.configuration.security.BadTokenException;
 import com.aqib.hospital.entity.security.AppUser;
 import com.aqib.hospital.entity.security.JWTUserDetails;
+import com.aqib.hospital.repository.RedisRepo;
 import com.aqib.hospital.repository.security.AppUserRepo;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import graphql.schema.DataFetchingEnvironment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -22,6 +25,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
@@ -36,6 +40,8 @@ import static java.util.function.Predicate.not;
 @RequiredArgsConstructor
 @Slf4j
 public class UserService implements UserDetailsService {
+    @Autowired
+    RedisRepo redisRepo;
 
     @Autowired
     AppUserRepo appUserRepo;
@@ -101,6 +107,7 @@ public class UserService implements UserDetailsService {
     private JWTUserDetails getUserDetails(AppUser user, String token) {
         return JWTUserDetails
                 .builder()
+                .id(user.getId())
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .authorities(collectionStream(user.getUserRoles().stream().map(role -> role.getName()).collect(Collectors.toList()))
@@ -110,13 +117,16 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
-    public boolean isAuthenticated() {
-        return Optional
+    public boolean isAuthenticated(HttpServletRequest request) {
+        log.info(String.valueOf(SecurityContextHolder.getContextHolderStrategy()));
+        log.info(SecurityContextHolder.MODE_THREADLOCAL);
+        String id = getCurrentUser().getId();
+        return (Optional
                 .ofNullable(SecurityContextHolder.getContext())
                 .map(SecurityContext::getAuthentication)
                 .filter(Authentication::isAuthenticated)
                 .filter(not(this::isAnonymous))
-                .isPresent();
+                .isPresent() && Optional.ofNullable(redisRepo.findById(id)==request.getHeader("Authorization")).isPresent());
     }
 
     private boolean isAnonymous(Authentication authentication) {

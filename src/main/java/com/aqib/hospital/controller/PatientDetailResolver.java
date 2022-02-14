@@ -54,7 +54,7 @@ public class PatientDetailResolver implements GraphQLResolver<PatientDetail> {
         String id1 = appUser.getId();
         String id2 = patientDetail.getId();
         List<String> userRoles = appUser.getUserRoles().stream().map(role -> role.getName()).collect(Collectors.toList());
-        if(!userRoles.stream().findAny().equals("ROLE_DOCTOR") && id1!= id2)
+        if(!userRoles.stream().findAny().equals("ROLE_DOCTOR") && !(id1.equals(id2)))
             throw new RuntimeException("You are not authenticated to view this");
         PersonalEntity personalEntity = personalRepo.findById(patientDetail.getId()).get();
         PersonalDetail personalDetail = new PersonalDetail();
@@ -68,7 +68,7 @@ public class PatientDetailResolver implements GraphQLResolver<PatientDetail> {
         String id1 = appUser.getId();
         String id2 = patientDetail.getId();
         List<String> userRoles = appUser.getUserRoles().stream().map(role -> role.getName()).collect(Collectors.toList());
-        if(!userRoles.stream().findAny().equals("ROLE_DOCTOR") && id1!= id2)
+        if(!userRoles.stream().findAny().equals("ROLE_DOCTOR") && !(id1.equals(id2)))
             throw new RuntimeException("You are not authenticated to view this");
         HealthEntity healthEntity = healthRepo.findById(patientDetail.getId()).get();
         HealthDetail healthDetail = new HealthDetail();
@@ -79,10 +79,14 @@ public class PatientDetailResolver implements GraphQLResolver<PatientDetail> {
     @PreAuthorize("isAuthenticated()")
     public Diagnosis diagnosis(PatientDetail patientDetail){
         AppUser appUser = userService.getCurrentUser();
+        log.info(appUser.toString());
         String id1 = appUser.getId();
         String id2 = patientDetail.getId();
+        log.info(id1);
+        log.info(id2);
         List<String> userRoles = appUser.getUserRoles().stream().map(role -> role.getName()).collect(Collectors.toList());
-        if(!userRoles.stream().findAny().equals("ROLE_DOCTOR") && id1!= id2)
+        log.info(String.valueOf(userRoles.stream().findAny().equals("ROLE_DOCTOR")));
+        if(!userRoles.stream().findAny().equals("ROLE_DOCTOR") && !(id1.equals(id2)))
             throw new RuntimeException("You are not authenticated to view this");
         DiagnosisEntity diagnosisEntity = diagnosisRepo.findById(patientDetail.getId()).get();
         Diagnosis diagnosis = new Diagnosis();

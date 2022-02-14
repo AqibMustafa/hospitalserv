@@ -1,10 +1,15 @@
 package com.aqib.hospital.filter;
 
+import com.aqib.hospital.configuration.JWTConfig;
 import com.aqib.hospital.configuration.UserService;
 import com.aqib.hospital.configuration.security.JWTPreAuthenticationToken;
+import com.aqib.hospital.entity.security.JWTUserDetails;
+import com.aqib.hospital.repository.RedisRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -15,9 +20,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +35,9 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final Pattern BEARER_PATTERN = Pattern.compile("^Bearer (.+?)$");
     private final UserService userService;
+
+    @Autowired
+    RedisRepo redisRepo;
 
 //    @Override
 //    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -60,8 +72,17 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
-        getToken(request)
-                .map(userService::loadUserByToken)
+        
+        //log.info(String.valueOf(token.stream().findAny().equals(getToken(request).get())));
+            //throw new RuntimeException("Login to proceed further!!!");
+        Optional<JWTUserDetails> user = getToken(request).map(userService::loadUserByToken);
+        if(user.isPresent()) {
+            if (redisRepo.findById(user.get().getId()) == null)
+                throw new RuntimeException("You need to login to proceed further!!");
+            log.info(user.get().getId());
+            log.info(redisRepo.findById(user.get().getId()));
+        }
+       user
                 .map(userDetails -> JWTPreAuthenticationToken
                         .builder()
                         .principal(userDetails)

@@ -7,6 +7,7 @@ type Mutation{
     addRoleToUser(username: String! , roleName: String!): Boolean
     updateUserPassword(data: passwordUpdate): UserDetail
     login(username: String!, password: String!): UserWithToken
+    logoutUser: Boolean
 }
 
 input personalDetailInput{

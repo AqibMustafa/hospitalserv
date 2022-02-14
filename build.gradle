@@ -25,6 +25,11 @@ dependencies {
 	implementation group: 'org.springframework.boot', name: 'spring-boot-starter-security', version: '2.6.3'
 	implementation group: 'com.auth0', name: 'java-jwt', version: '3.18.3'
 	implementation group: 'org.springframework.boot', name: 'spring-boot-starter-aop', version: '2.6.3'
+	implementation ('org.springframework.boot:spring-boot-starter-data-redis:2.6.3') {
+		exclude group: 'io.lettuce', module: 'lettuce-core'
+	}
+	implementation group: 'redis.clients', name: 'jedis'
+
 
 
 }

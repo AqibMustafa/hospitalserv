@@ -13,7 +13,7 @@ import java.util.List;
 @Getter
 @Builder
 public class JWTUserDetails implements UserDetails {
-
+    private final String id;
     private final String username;
     private final String password;
     private final List<SimpleGrantedAuthority> authorities;

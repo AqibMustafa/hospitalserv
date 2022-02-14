@@ -10,6 +10,7 @@ public class JWTPreAuthenticationToken extends PreAuthenticatedAuthenticationTok
 
     @Builder
     public JWTPreAuthenticationToken(JWTUserDetails principal, WebAuthenticationDetails details) {
+
         super(principal, null, principal.getAuthorities());
         super.setDetails(details);
     }

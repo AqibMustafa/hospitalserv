@@ -11,24 +11,40 @@ import com.aqib.hospital.model.*;
 import com.aqib.hospital.repository.DiagnosisRepo;
 import com.aqib.hospital.repository.HealthRepo;
 import com.aqib.hospital.repository.PersonalRepo;
+import com.aqib.hospital.repository.RedisRepo;
 import com.aqib.hospital.repository.security.AppUserRepo;
 import com.aqib.hospital.repository.security.UserRoleRepo;
+import graphql.GraphQLContext;
+import graphql.annotations.annotationTypes.GraphQLMutation;
 import graphql.kickstart.tools.GraphQLMutationResolver;
+import graphql.schema.DataFetchingEnvironment;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.TimeToLive;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class MutationResolver implements GraphQLMutationResolver {
 
     @Autowired
@@ -45,6 +61,12 @@ public class MutationResolver implements GraphQLMutationResolver {
 
     @Autowired
     UserRoleRepo userRoleRepo;
+
+    @Autowired
+    RedisRepo redisRepo;
+
+    @Autowired
+    RedisTemplate redisTemplate;
 
     private final PasswordEncoder passwordEncoder;
     private final UserService userService;
@@ -134,18 +156,39 @@ public class MutationResolver implements GraphQLMutationResolver {
     }
 
     @PreAuthorize("isAnonymous()")
-    public UserWithToken login(String username, String password) {
+    public UserWithToken login(String username, String password ) {
         String encodedPassword = passwordEncoder.encode(password);
         UsernamePasswordAuthenticationToken credentials = new UsernamePasswordAuthenticationToken(username, encodedPassword);
         UserWithToken userWithToken = new UserWithToken();
         try {
             SecurityContextHolder.getContext().setAuthentication(authenticationProvider.authenticate(credentials));
-            System.out.println("SECURITY_CONTEXT: " + SecurityContextHolder.getContext().getAuthentication());
-            userWithToken.setUser(userService.getCurrentUser());
-            userWithToken.setToken(userService.getToken(userService.getCurrentUser()));
+            log.info("SECURITY_CONTEXT: " + SecurityContextHolder.getContext().getAuthentication());
+            AppUser user = userService.getCurrentUser();
+            userWithToken.setUser(user);
+            String token = userService.getToken(user);
+            if(redisRepo.findById(user.getId())!=null){
+                throw new RuntimeException("You are already logged in!");
+            }
+            redisRepo.save(user.getId(),token);
+            redisTemplate.expire(user.getId(),25, TimeUnit.MINUTES);
+            userWithToken.setToken(token);
             return userWithToken;
         } catch (AuthenticationException ex) {
             throw new BadCredentialsException(username);
+        }
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    public Boolean logoutUser(DataFetchingEnvironment env){
+        try {
+            AppUser user = userService.getCurrentUser();
+            log.info(user.toString());
+            String id = user.getId();
+            redisRepo.delete(id);
+            SecurityContextHolder.getContext().setAuthentication(null);
+            return true;
+        }catch (Exception e){
+            throw new RuntimeException("There was a error during logout!!");
         }
     }
 }
