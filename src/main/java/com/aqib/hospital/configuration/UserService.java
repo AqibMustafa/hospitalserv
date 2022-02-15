@@ -3,6 +3,7 @@ package com.aqib.hospital.configuration;
 import com.aqib.hospital.configuration.security.BadTokenException;
 import com.aqib.hospital.entity.security.AppUser;
 import com.aqib.hospital.entity.security.JWTUserDetails;
+import com.aqib.hospital.entity.security.UserRoles;
 import com.aqib.hospital.repository.RedisRepo;
 import com.aqib.hospital.repository.security.AppUserRepo;
 import com.auth0.jwt.JWT;
@@ -10,12 +11,11 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import graphql.schema.DataFetchingEnvironment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -24,13 +24,12 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,9 +39,6 @@ import static java.util.function.Predicate.not;
 @RequiredArgsConstructor
 @Slf4j
 public class UserService implements UserDetailsService {
-    @Autowired
-    RedisRepo redisRepo;
-
     @Autowired
     AppUserRepo appUserRepo;
 
@@ -110,23 +106,20 @@ public class UserService implements UserDetailsService {
                 .id(user.getId())
                 .username(user.getUsername())
                 .password(user.getPassword())
-                .authorities(collectionStream(user.getUserRoles().stream().map(role -> role.getName()).collect(Collectors.toList()))
+                .authorities(collectionStream(user.getUserRoles().stream().map(UserRoles::getName).collect(Collectors.toList()))
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList()))
                 .token(token)
                 .build();
     }
 
-    public boolean isAuthenticated(HttpServletRequest request) {
-        log.info(String.valueOf(SecurityContextHolder.getContextHolderStrategy()));
-        log.info(SecurityContextHolder.MODE_THREADLOCAL);
-        String id = getCurrentUser().getId();
-        return (Optional
+    public boolean isAuthenticated() {
+        return Optional
                 .ofNullable(SecurityContextHolder.getContext())
                 .map(SecurityContext::getAuthentication)
                 .filter(Authentication::isAuthenticated)
                 .filter(not(this::isAnonymous))
-                .isPresent() && Optional.ofNullable(redisRepo.findById(id)==request.getHeader("Authorization")).isPresent());
+                .isPresent();
     }
 
     private boolean isAnonymous(Authentication authentication) {
@@ -136,4 +129,5 @@ public class UserService implements UserDetailsService {
     public static <T> Stream<T> collectionStream(Collection<T> collection) {
         return collection == null || collection.isEmpty() ? Stream.empty() : collection.stream();
     }
+
 }

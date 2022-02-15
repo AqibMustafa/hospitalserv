@@ -1,6 +1,5 @@
 package com.aqib.hospital.filter;
 
-import com.aqib.hospital.configuration.JWTConfig;
 import com.aqib.hospital.configuration.UserService;
 import com.aqib.hospital.configuration.security.JWTPreAuthenticationToken;
 import com.aqib.hospital.entity.security.JWTUserDetails;
@@ -8,25 +7,19 @@ import com.aqib.hospital.repository.RedisRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -37,50 +30,24 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
     private final UserService userService;
 
     @Autowired
-    RedisRepo redisRepo;
+    RedisTemplate redisTemplate;
 
-//    @Override
-//    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-//        if (request.getServletPath().equals("/login")) {
-//            filterChain.doFilter(request, response);
-//        } else {
-//            String authHeader = request.getHeader("Authorization");
-//            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-//                try {
-//                    String token = authHeader.split(" ")[1];
-//                    Algorithm algorithm = Algorithm.HMAC256("secretkey".getBytes());
-//                    JWTVerifier jwtVerifier = JWT.require(algorithm).build();
-//                    DecodedJWT decodedJWT = jwtVerifier.verify(token);
-//                    String username = decodedJWT.getSubject();
-//                    String[] roles = decodedJWT.getClaim("roles").asArray(String.class);
-//                    Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
-//                    stream(roles).forEach(role -> {
-//                        authorities.add(new SimpleGrantedAuthority(role));
-//                    });
-//                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(username, null, authorities);
-//                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-//                    filterChain.doFilter(request, response);
-//                } catch (Exception e) {
-//                    response.setHeader("error", e.getMessage());
-//                    response.sendError(HttpServletResponse.SC_FORBIDDEN);
-//                }
-//            } else {
-//                filterChain.doFilter(request, response);
-//            }
-//        }
-//    }
+    @Autowired
+    RedisRepo redisRepo;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
         
-        //log.info(String.valueOf(token.stream().findAny().equals(getToken(request).get())));
-            //throw new RuntimeException("Login to proceed further!!!");
         Optional<JWTUserDetails> user = getToken(request).map(userService::loadUserByToken);
         if(user.isPresent()) {
-            if (redisRepo.findById(user.get().getId()) == null)
-                throw new RuntimeException("You need to login to proceed further!!");
+            if (!Optional.ofNullable(redisTemplate.opsForHash().get(user.get().getId(),user.get().getId())).isPresent())
+                throw new RuntimeException("You have been logged out or your session is expired! Please log in to proceed.");
             log.info(user.get().getId());
-            log.info(redisRepo.findById(user.get().getId()));
+            log.info(redisTemplate.opsForHash().get(user.get().getId(),user.get().getId()).toString());
+            List<String> userinfo = redisTemplate.opsForHash().values(user.get().getId());
+            log.info(userinfo.toString());
+            if(!redisTemplate.opsForHash().get(user.get().getId(),user.get().getId()).toString().equals(getToken(request).get()))
+                throw new RuntimeException("You Token is expired ! Please use the correct token.");
         }
        user
                 .map(userDetails -> JWTPreAuthenticationToken

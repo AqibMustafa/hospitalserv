@@ -17,7 +17,7 @@ import java.util.Map;
 @Configuration
 public class JWTConfig {
     @Bean
-    PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
     }
 

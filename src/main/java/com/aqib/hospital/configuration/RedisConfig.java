@@ -10,15 +10,15 @@ import org.springframework.data.redis.core.RedisTemplate;
 public class RedisConfig {
 
     @Bean
-    JedisConnectionFactory jedisConnectionFactory() {
+    public JedisConnectionFactory jedisConnectionFactory() {
         RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration("127.0.0.1", 6379);
         redisStandaloneConfiguration.setPassword("mypass");
         return new JedisConnectionFactory(redisStandaloneConfiguration);
     }
 
     @Bean
-    public RedisTemplate redisTemplate() {
-        RedisTemplate template = new RedisTemplate<>();
+    public RedisTemplate<String,String> redisTemplate() {
+        RedisTemplate<String,String> template = new RedisTemplate<>();
         template.setConnectionFactory(jedisConnectionFactory());
         return template;
     }

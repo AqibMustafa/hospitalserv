@@ -14,31 +14,22 @@ import com.aqib.hospital.repository.PersonalRepo;
 import com.aqib.hospital.repository.RedisRepo;
 import com.aqib.hospital.repository.security.AppUserRepo;
 import com.aqib.hospital.repository.security.UserRoleRepo;
-import graphql.GraphQLContext;
-import graphql.annotations.annotationTypes.GraphQLMutation;
 import graphql.kickstart.tools.GraphQLMutationResolver;
-import graphql.schema.DataFetchingEnvironment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.TimeToLive;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.logout.LogoutHandler;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.servlet.http.HttpServletRequest;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -63,10 +54,10 @@ public class MutationResolver implements GraphQLMutationResolver {
     UserRoleRepo userRoleRepo;
 
     @Autowired
-    RedisRepo redisRepo;
+    RedisTemplate redisTemplate;
 
     @Autowired
-    RedisTemplate redisTemplate;
+    RedisRepo redisRepo;
 
     private final PasswordEncoder passwordEncoder;
     private final UserService userService;
@@ -166,11 +157,11 @@ public class MutationResolver implements GraphQLMutationResolver {
             AppUser user = userService.getCurrentUser();
             userWithToken.setUser(user);
             String token = userService.getToken(user);
-            if(redisRepo.findById(user.getId())!=null){
+            if(Optional.ofNullable(redisTemplate.opsForHash().get(user.getId(),user.getId())).isPresent()){
                 throw new RuntimeException("You are already logged in!");
             }
-            redisRepo.save(user.getId(),token);
-            redisTemplate.expire(user.getId(),25, TimeUnit.MINUTES);
+            redisTemplate.opsForHash().put(user.getId(),user.getId(),token);
+            log.info(String.valueOf(redisTemplate.expire(user.getId(),25, TimeUnit.MINUTES)));
             userWithToken.setToken(token);
             return userWithToken;
         } catch (AuthenticationException ex) {
@@ -179,16 +170,15 @@ public class MutationResolver implements GraphQLMutationResolver {
     }
 
     @PreAuthorize("isAuthenticated()")
-    public Boolean logoutUser(DataFetchingEnvironment env){
-        try {
+    public Boolean logoutUser(){
+
             AppUser user = userService.getCurrentUser();
-            log.info(user.toString());
+//            log.info(user.toString());
             String id = user.getId();
-            redisRepo.delete(id);
+            log.info(redisTemplate.opsForHash().get(id,id).toString());
+            redisTemplate.opsForHash().delete(id,id);
             SecurityContextHolder.getContext().setAuthentication(null);
             return true;
-        }catch (Exception e){
-            throw new RuntimeException("There was a error during logout!!");
-        }
+
     }
 }

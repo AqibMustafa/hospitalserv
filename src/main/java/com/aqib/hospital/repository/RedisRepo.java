@@ -1,6 +1,7 @@
 package com.aqib.hospital.repository;
 
 import com.aqib.hospital.entity.security.AppUser;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -11,10 +12,10 @@ import java.util.List;
 public class RedisRepo {
     private HashOperations hashOperations;
 
-    private RedisTemplate redisTemplate;
+    private RedisTemplate<String , String> redisTemplate;
 
     public RedisRepo(RedisTemplate redisTemplate){
-        this.redisTemplate = redisTemplate;
+        this.redisTemplate=redisTemplate;
         this.hashOperations = this.redisTemplate.opsForHash();
     }
 
