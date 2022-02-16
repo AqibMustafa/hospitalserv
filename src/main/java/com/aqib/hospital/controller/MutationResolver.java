@@ -135,21 +135,30 @@ public class MutationResolver implements GraphQLMutationResolver {
     }
 
     @PreAuthorize("isAuthenticated()")
-    AppUser updateUserPassword(UpdatePassword updatePassword){
+    AppUser updateUserPassword(UpdatePassword updatePassword) {
         AppUser user = appUserRepo.findByUsername(updatePassword.getUsername());
-        String password = passwordEncoder.encode(updatePassword.getCurrentPassword());
-        if(!password.equals(user.getPassword())){
-            throw new RuntimeException("Current password entered is not correct!!");
+        if(user == null)
+            throw new RuntimeException("Username " + updatePassword.getUsername() +" does not exist!!");
+        UsernamePasswordAuthenticationToken credentials = new UsernamePasswordAuthenticationToken(user.getUsername(), updatePassword.getCurrentPassword());
+        try {
+            SecurityContextHolder.getContext().setAuthentication(authenticationProvider.authenticate(credentials));
+            log.info(user.getPassword());
+            String password = passwordEncoder.encode(updatePassword.getCurrentPassword());
+            log.info(password);
+            user.setPassword(passwordEncoder.encode(updatePassword.getNewPassword()));
+            user = appUserRepo.save(user);
+            logoutUser();
+            return user;
+
+        } catch (Exception e) {
+            throw new BadCredentialsException(user.getUsername());
+
         }
-        user.setPassword(passwordEncoder.encode(updatePassword.getNewPassword()));
-        user = appUserRepo.save(user);
-        return user;
     }
 
     @PreAuthorize("isAnonymous()")
     public UserWithToken login(String username, String password ) {
-        String encodedPassword = passwordEncoder.encode(password);
-        UsernamePasswordAuthenticationToken credentials = new UsernamePasswordAuthenticationToken(username, encodedPassword);
+        UsernamePasswordAuthenticationToken credentials = new UsernamePasswordAuthenticationToken(username, password);
         UserWithToken userWithToken = new UserWithToken();
         try {
             SecurityContextHolder.getContext().setAuthentication(authenticationProvider.authenticate(credentials));
